@@ -1,7 +1,10 @@
-from flask import Flask
+from fastapi import FastAPI
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route("/")
-def login():
-    
+@app.get("/")
+def health_check():
+    return {
+        'message': "All good, server running"
+    }
+
