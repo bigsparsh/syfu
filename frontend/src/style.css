@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+.sora { 
+    font-family: "Sora", sans-serif;
+}
+.space {
+    font-family: "Space Grotesk", sans-serif;
+}
