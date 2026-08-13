@@ -14,7 +14,7 @@ class SDLCModel(enum.Enum):
 
 
 class Project(Base):
-    __tablename__ = "youtube"
+    __tablename__ = "project"
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -27,6 +27,7 @@ class Project(Base):
     )
     description: Mapped[str] = mapped_column(
         String(250),
+        nullable=True
     )
     sdlcModel: Mapped[SDLCModel] = mapped_column()
     # TODO: Add ideapoints and techstack for the project
