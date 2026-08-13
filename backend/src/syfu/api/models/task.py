@@ -15,7 +15,7 @@ class TaskPriority(enum.Enum):
 
 
 class Task(Base):
-    __tablename__ = "time-slot"
+    __tablename__ = "task"
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -28,16 +28,23 @@ class Task(Base):
     )
     description: Mapped[str] = mapped_column(
         String(250),
+        nullable=True
     )
     assocDate: Mapped[datetime] = mapped_column(
         DateTime,
+        nullable=True
     )
     deadline: Mapped[datetime] = mapped_column(
-        DateTime
+        DateTime,
+        nullable=True
     )
     priority: Mapped[TaskPriority] = mapped_column(
         nullable=False
     )
+
+    def __repr__(self) -> str:
+        return f'Task(id={self.id}, title={self.title}, description={self.description}, assocDate: {self.assocDate}, deadline: {self.deadline}, priority: {self.priority})'
+    
 
 
 class Youtube(Base):
@@ -55,7 +62,7 @@ class Youtube(Base):
 
 
 class Interest(Base):
-    __tablename__ = "youtube"
+    __tablename__ = "interest"
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,

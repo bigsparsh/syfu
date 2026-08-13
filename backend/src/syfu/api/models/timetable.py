@@ -49,4 +49,5 @@ class TimeSlot(Base):
     )
     description: Mapped[str] = mapped_column(
         String(250),
+        nullable=True
     )
