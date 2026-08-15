@@ -1,5 +1,5 @@
 [project]
-name = "backend"
+name = "syfu"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -21,7 +21,23 @@ dependencies = [
     "langchain-text-splitters>=1.1.2",
     "langchain-unstructured[local]>=1.0.1",
     "langgraph>=1.2.9",
+    "pydantic>=2.13.4",
     "pypdf>=6.14.2",
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.51",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/syfu"]
+
+[tool.basedpyright]
+# Lower the strictness level: "basic", "standard", "recommended", or "strict"
+typeCheckingMode = "basic"
+
+# Or disable the specific rules seen in your editor:
+reportMissingTypeStubs = false       # Fixes "Stub file not found for 'syfu...'"
+reportMissingTypeArgument = false    # Fixes "Expected type arguments for generic class 'dict'"
