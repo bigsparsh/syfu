@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 
@@ -11,7 +12,7 @@ from syfu.schemas.task import TaskPriority, TaskSchema
 
 
 @tool()
-def get_tasks() -> list[dict]:
+def get_tasks() -> str:
     """This function is used to get all the tasks.
 
     Returns:
@@ -19,14 +20,17 @@ def get_tasks() -> list[dict]:
     """
 
     with Session(db) as session:
-        stmt = select(Task)
-        return [
-            TaskSchema.model_validate(x).model_dump() for x in session.scalars(stmt)
-        ]
+        tasks = session.scalars(select(Task))
+        if tasks:
+            return json.dumps(
+                [TaskSchema.model_validate(x).model_dump(mode="json") for x in tasks]
+            )
+        else:
+            return json.dumps([])
 
 
 @tool()
-def get_tasks_by_title(title: str) -> list[dict]:
+def get_tasks_by_title(title: str) -> str:
     """This function is used to get all the tasks matching a certain title.
     Agrs:
         title (str): Title of the task that you want to search.
@@ -36,14 +40,17 @@ def get_tasks_by_title(title: str) -> list[dict]:
     """
 
     with Session(db) as session:
-        stmt = select(Task).where(Task.title.like(title))
-        return [
-            TaskSchema.model_validate(x).model_dump() for x in session.scalars(stmt)
-        ]
+        tasks = session.scalars(select(Task).where(Task.title.like(title)))
+        if tasks:
+            return json.dumps(
+                [TaskSchema.model_validate(x).model_dump(mode="json") for x in tasks]
+            )
+        else:
+            return json.dumps([])
 
 
 @tool()
-def get_task_by_id(id: str) -> dict | None:
+def get_task_by_id(id: str) -> str:
     """This function is used to get a single task with the matching id.
     Agrs:
         id (str): UUID as string of the task that you want to search.
@@ -54,7 +61,14 @@ def get_task_by_id(id: str) -> dict | None:
 
     with Session(db) as session:
         task = session.scalar(select(Task).where(Task.id == id))
-        return TaskSchema.model_validate(task).model_dump() if task else None
+        if task:
+            return json.dumps(
+                TaskSchema.model_validate(task).model_dump(mode="json")
+                if task
+                else None
+            )
+        else:
+            return json.dumps([])
 
 
 @tool("create_tasks", args_schema=TaskSchema)
@@ -65,7 +79,7 @@ def create_tasks(
     assocDate: datetime | None = None,
     deadline: datetime | None = None,
     priority: TaskPriority = TaskPriority.CHL,
-) -> dict:
+) -> str:
     """This is the function which is used to create a new task.
 
     Args:
@@ -90,4 +104,4 @@ def create_tasks(
         session.add(new_task)
         session.commit()
         session.refresh(new_task)
-        return TaskSchema.model_validate(new_task).model_dump()
+        return json.dumps(TaskSchema.model_validate(new_task).model_dump(mode="json"))
