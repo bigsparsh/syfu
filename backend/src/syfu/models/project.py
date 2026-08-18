@@ -1,10 +1,10 @@
 import enum
 import uuid
 
-from sqlalchemy import Uuid, String, Boolean
+from sqlalchemy import Boolean, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.syfu.api.models.base import Base
+from syfu.models.base import Base
 
 
 class SDLCModel(enum.Enum):
@@ -36,3 +36,6 @@ class Project(Base):
         nullable=False,
         default=True
     )
+
+    def __repr__(self) -> str:
+        return f'Project(id={self.id}, title={self.title}, description={self.description}, sdlcModel={self.sdlcModel}, aiTickets={self.aiTickets})'

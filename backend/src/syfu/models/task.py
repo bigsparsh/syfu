@@ -1,21 +1,16 @@
-import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Uuid, String, DateTime
+from sqlalchemy import DateTime, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.syfu.api.models.base import Base
-
-
-class TaskPriority(enum.Enum):
-    IMP = "important"
-    DOT = "doit"
-    CHL = "chill"
+from syfu.models.base import Base
+from syfu.schemas.task import TaskPriority
 
 
 class Task(Base):
     __tablename__ = "task"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -44,11 +39,11 @@ class Task(Base):
 
     def __repr__(self) -> str:
         return f'Task(id={self.id}, title={self.title}, description={self.description}, assocDate: {self.assocDate}, deadline: {self.deadline}, priority: {self.priority})'
-    
 
 
 class Youtube(Base):
     __tablename__ = "youtube"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -60,9 +55,13 @@ class Youtube(Base):
         nullable=False
     )
 
+    def __repr__(self) -> str:
+        return f'Youtube(id={self.id}, channelName={self.channelName})'
+
 
 class Interest(Base):
     __tablename__ = "interest"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -73,3 +72,6 @@ class Interest(Base):
         String(30),
         nullable=False
     )
+
+    def __repr__(self) -> str:
+        return f'Interest(id={self.id}, interestName={self.interestName})'

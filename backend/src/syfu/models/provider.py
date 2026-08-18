@@ -1,10 +1,10 @@
 import enum
 import uuid
 
-from sqlalchemy import Uuid, String
+from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.syfu.api.models.base import Base
+from syfu.models.base import Base
 
 
 class Providers(enum.Enum):

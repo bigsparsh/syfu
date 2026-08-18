@@ -1,9 +1,9 @@
 import uuid
 
-from sqlalchemy import Uuid, String
+from sqlalchemy import String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.syfu.api.models.base import Base
+from syfu.models.base import Base
 
 
 class User(Base):
@@ -23,6 +23,6 @@ class User(Base):
         String(50),
         nullable=False
     )
+
     def __repr__(self) -> str:
         return f'User(id={self.id}, email={self.email}, password={self.password})'
-
