@@ -3,12 +3,12 @@ import uuid
 from datetime import datetime
 
 from langchain_core.tools import tool
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from syfu.core.db import db
 from syfu.models.task import Task
-from syfu.schemas.task import TaskPriority, TaskSchema
+from syfu.schemas.task import TaskItem, TaskPriority, TaskSchema, UpdateTaskSchema
 
 
 @tool()
@@ -19,34 +19,39 @@ def get_tasks() -> str:
         List[dict]: A list of all the tasks
     """
 
+    print("[tool-invoke][get_tasks]")
     with Session(db) as session:
         tasks = session.scalars(select(Task))
         if tasks:
             return json.dumps(
-                [TaskSchema.model_validate(x).model_dump(mode="json") for x in tasks]
+                [TaskItem.model_validate(x).model_dump(mode="json") for x in tasks]
             )
         else:
             return json.dumps([])
 
 
 @tool()
-def get_tasks_by_title(title: str) -> str:
+def get_tasks_by_title(title: list[str]) -> str:
     """This function is used to get all the tasks matching a certain title.
     Agrs:
-        title (str): Title of the task that you want to search.
+        title (list[str]): Titles related to the task that you want to search.
 
     Returns:
-        List[dict]: A list of all the tasks that match the title.
+        list[dict]: A list of all the tasks that match the title.
     """
 
+    print("[tool-invoke][get_tasks_by_title]")
+    if not title:
+        return json.dumps([])
     with Session(db) as session:
-        tasks = session.scalars(select(Task).where(Task.title.like(title)))
-        if tasks:
-            return json.dumps(
-                [TaskSchema.model_validate(x).model_dump(mode="json") for x in tasks]
-            )
-        else:
+        tasks = session.scalars(
+            select(Task).where(or_(*[Task.title.ilike(f"%{t}%") for t in title]))
+        ).all()
+        if not tasks:
             return json.dumps([])
+        return json.dumps(
+            [TaskItem.model_validate(x).model_dump(mode="json") for x in tasks]
+        )
 
 
 @tool()
@@ -58,50 +63,137 @@ def get_task_by_id(id: str) -> str:
     Returns:
         List[dict]: A list of all the tasks that match the title.
     """
-
+    print("[tool-invoke][get_task_by_id]")
     with Session(db) as session:
         task = session.scalar(select(Task).where(Task.id == id))
         if task:
             return json.dumps(
-                TaskSchema.model_validate(task).model_dump(mode="json")
-                if task
-                else None
+                TaskItem.model_validate(task).model_dump(mode="json") if task else None
             )
         else:
             return json.dumps([])
 
 
+class CreateTaskSchema:
+    id: uuid.UUID | None = None
+    title: str = ""
+    description: str | None = None
+    assocDate: datetime | None = None
+    deadline: datetime | None = None
+    priority: TaskPriority = TaskPriority.CHL
+    completed: bool = False
+
+
 @tool("create_tasks", args_schema=TaskSchema)
-def create_tasks(
-    id: uuid.UUID | None = None,
-    title: str = "",
-    description: str | None = None,
-    assocDate: datetime | None = None,
-    deadline: datetime | None = None,
-    priority: TaskPriority = TaskPriority.CHL,
-) -> str:
-    """This is the function which is used to create a new task.
+def create_tasks(tasks: list[CreateTaskSchema]) -> str:
+    """this is the function which is used to create a new task.
 
-    Args:
-        id (Optional[uuid.UUID], optional): Unique identifier for the task. Defaults to None.
-        title (str): Title of the task.
-        description (Optional[str], optional): Detailed description of the task. Defaults to None.
-        assocDate (Optional[datetime], optional): Associated date with the task. Defaults to None.
-        deadline (Optional[datetime], optional): Last date and time to finish that task. Defaults to None.
-        priority (TaskPriority, optional): Priority of the task. Defaults to TaskPriority.CHL.
+    args:
+        tasks: [
+            {
+                id (optional[uuid.uuid], optional): unique identifier for the task. defaults to none.
+                title (str): title of the task.
+                description (optional[str], optional): detailed description of the task. defaults to none.
+                assocdate (optional[datetime], optional): associated date with the task. defaults to none.
+                deadline (optional[datetime], optional): last date and time to finish that task. defaults to none.
+                priority (taskpriority, optional): priority of the task. defaults to taskpriority.chl.
+                completed (bool): defaults to false and is the indicator of task completion.
+            },
+            ...
+        ]
 
-    Returns:
-        dict: The task that was just now created is returned
+    returns:
+        dict: the task that was just now created is returned
     """
+
+    print("[tool-invoke][create_tasks]")
     with Session(db) as session:
-        new_task = Task(
-            title=title,
-            description=description,
-            assocDate=assocDate,
-            deadline=deadline,
-            priority=priority,
-        )
-        session.add(new_task)
+        new_tasks = [Task(**data.model_dump()) for data in tasks]
+        session.add_all(new_tasks)
         session.commit()
-        session.refresh(new_task)
-        return json.dumps(TaskSchema.model_validate(new_task).model_dump(mode="json"))
+        for task in new_tasks:
+            session.refresh(task)
+        return json.dumps(
+            [
+                TaskSchema.model_validate(task).model_dump(mode="json")
+                for task in new_tasks
+            ]
+        )
+
+
+@tool("delete_tasks")
+def delete_tasks(ids: list[str]) -> str:
+    """
+    this function is used to delete all the entries with the given ids.
+    args:
+        ids (list[str]): uuids of all the entries to be deleted
+
+    returns: str
+    """
+
+    print("[tool-invoke][delete-tasks]")
+
+    try:
+        uuids = [uuid.UUID(i.strip()) for i in ids]
+    except Exception as err:
+        return f"Error occured: {err}"
+
+    with Session(db) as session:
+        session.execute(delete(Task).where(Task.id.in_(uuids)))
+        session.commit()
+        return f"Successfully deleted tasks with IDs {ids}"
+
+
+@tool("complete_task")
+def complete_task(id: str, status: bool) -> str:
+    """
+    this function is used to mark a task as either completed or not completed
+    args:
+        ids (str): uuid of all the task in question
+        status (bool): Indicator of completion, (True -> Completed, False -> Not Completed)
+
+    returns: str
+    """
+
+    try:
+        uid = uuid.UUID(id.strip())
+    except Exception as err:
+        return f"Error in task completion status updation: {err}"
+    with Session(db) as session:
+        session.execute(update(Task).where(Task.id == uid).values(completed=status))
+        session.commit()
+        return f"Successfully marked task with id {id} as {'Completed' if status else 'Not Completed'}"
+
+
+@tool("update_tasks")
+def update_tasks(tasks: list[UpdateTaskSchema]) -> str:
+    """this is the function which is used to update tasks.
+
+    args:
+        tasks: [
+            {
+                id (uuid.uuid): unique identifier for the task.
+                title (str | None): title of the task. defaults to none.
+                description (str | None): detailed description of the task. defaults to none.
+                assocdate (datetime | None): associated date with the task. defaults to none.
+                deadline (datetime | None): last date and time to finish that task. defaults to none.
+                priority (taskpriority | None): priority of the task. defaults to none.
+                completed (bool | None): defaults to false and is the indicator of task completion. defaults to none.
+            },
+            ...
+        ]
+
+    returns: str
+    """
+
+    try:
+        tasks = [Task(**x.model_dump()) for x in tasks]
+        utasks = [{**x.model_dump(), "id": uuid.UUID(x["id"].strip())} for x in tasks]
+    except Exception as err:
+        print(f"Error occured while updation of tasks: {err}")
+
+    with Session(db) as session:
+        session.bulk_update_mappings(Task, utasks)
+        session.commit()
+
+    return f"Successfully updated all the entries of the IDs {[x['id'] for x in tasks]}"

@@ -23,7 +23,15 @@ pprint(llm.invoke(f"{soul}\nhelllo").content)
 
 from syfu.tools.tasks import *
 
-tools = [create_tasks, get_tasks, get_task_by_id, get_tasks_by_title]
+tools = [
+    create_tasks,
+    get_tasks,
+    get_task_by_id,
+    get_tasks_by_title,
+    delete_tasks,
+    complete_task,
+    update_tasks,
+]
 tos = {t.name: t for t in tools}
 
 llm = llm.bind_tools(tools)
@@ -62,7 +70,9 @@ def tool_node(state: dict):
     print()
     for tool_call in state["messages"][-1].tool_calls:
         if tool_call["name"] == "create_tasks":
-            task = get_tasks_by_title.invoke(tool_call["args"]["title"])
+            task = get_tasks_by_title.invoke(
+                {"title": [x["title"] for x in tool_call["args"]["tasks"]]}
+            )
             if task:
                 msg = ToolMessage(content=f"{task}", tool_call_id=tool_call["id"])
                 print("[tool_node][create_task][found]", msg)
@@ -88,17 +98,6 @@ def should_continue(state: dict):
     return END
 
 
-def rerun(state: dict):
-    """
-    Decide if another tool needs to be called after the previous one.
-    """
-
-    if state["messages"][-1].content[0] == "Already Exists":
-        return "llm_call"
-    else:
-        return "tool_node"
-
-
 agent_builder = StateGraph(MessageState)
 
 agent_builder.add_node("llm_call", llm_call)
@@ -106,17 +105,6 @@ agent_builder.add_node("tool_node", tool_node)
 
 agent_builder.add_edge(START, "llm_call")
 agent_builder.add_conditional_edges("llm_call", should_continue, ["tool_node", END])
-# agent_builder.add_conditional_edges("tool_node", rerun, ["tool_node", "llm_call"])
 agent_builder.add_edge("tool_node", "llm_call")
 
 agent = agent_builder.compile()
-#
-# from IPython.display import Image, display
-#
-# display(Image(agent.get_graph(xray=True).draw_mermaid_png()))
-#
-# messages = [HumanMessage(content="I wanna get my clothes washed by tommorrow 5pm.")]
-# messages = agent.invoke({"messages": messages})
-#
-# for m in messages["messages"]:
-#     pprint(m)
