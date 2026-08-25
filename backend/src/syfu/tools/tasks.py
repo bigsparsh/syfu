@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from langchain_core.tools import tool
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import Update, delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from syfu.core.db import db
@@ -74,18 +74,8 @@ def get_task_by_id(id: str) -> str:
             return json.dumps([])
 
 
-class CreateTaskSchema:
-    id: uuid.UUID | None = None
-    title: str = ""
-    description: str | None = None
-    assocDate: datetime | None = None
-    deadline: datetime | None = None
-    priority: TaskPriority = TaskPriority.CHL
-    completed: bool = False
-
-
-@tool("create_tasks", args_schema=TaskSchema)
-def create_tasks(tasks: list[CreateTaskSchema]) -> str:
+@tool("create_tasks")
+def create_tasks(tasks: list[TaskItem]) -> str:
     """this is the function which is used to create a new task.
 
     args:
@@ -108,16 +98,13 @@ def create_tasks(tasks: list[CreateTaskSchema]) -> str:
 
     print("[tool-invoke][create_tasks]")
     with Session(db) as session:
-        new_tasks = [Task(**data.model_dump()) for data in tasks]
-        session.add_all(new_tasks)
+        tasks = [Task(**d.model_dump()) for d in tasks]
+        session.add_all(tasks)
         session.commit()
-        for task in new_tasks:
+        for task in tasks:
             session.refresh(task)
         return json.dumps(
-            [
-                TaskSchema.model_validate(task).model_dump(mode="json")
-                for task in new_tasks
-            ]
+            [TaskItem.model_validate(t).model_dump(mode="json") for t in tasks]
         )
 
 
@@ -155,6 +142,7 @@ def complete_task(id: str, status: bool) -> str:
     returns: str
     """
 
+    print("[tool-invoke][complete-tasks]")
     try:
         uid = uuid.UUID(id.strip())
     except Exception as err:
@@ -186,14 +174,16 @@ def update_tasks(tasks: list[UpdateTaskSchema]) -> str:
     returns: str
     """
 
+    print("[tool-invoke][update_tasks]")
+    print(tasks)
     try:
-        tasks = [Task(**x.model_dump()) for x in tasks]
-        utasks = [{**x.model_dump(), "id": uuid.UUID(x["id"].strip())} for x in tasks]
+        tasks = [task.model_dump(exclude_unset=True) for task in tasks]
+        tasks = [{k: v for k, v in task.items() if v is not None} for task in tasks]
     except Exception as err:
         print(f"Error occured while updation of tasks: {err}")
 
     with Session(db) as session:
-        session.bulk_update_mappings(Task, utasks)
+        session.bulk_update_mappings(Task, tasks)
         session.commit()
 
     return f"Successfully updated all the entries of the IDs {[x['id'] for x in tasks]}"
