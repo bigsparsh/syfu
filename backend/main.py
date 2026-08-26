@@ -22,6 +22,7 @@ embedding = NVIDIAEmbeddings(model="nvidia/nemotron-3-embed-1b")
 pprint(llm.invoke(f"{soul}\nhelllo").content)
 
 from syfu.tools.tasks import *
+from syfu.tools.web_research import *
 
 tools = [
     create_tasks,
@@ -31,6 +32,7 @@ tools = [
     delete_tasks,
     complete_task,
     update_tasks,
+    web_search,
 ]
 tos = {t.name: t for t in tools}
 
