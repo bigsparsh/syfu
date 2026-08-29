@@ -1,6 +1,9 @@
 from langchain_nvidia import NVIDIAEmbeddings
+import os
 from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
+from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from pprint import pprint
 from syfu.core.db import init_db
@@ -9,14 +12,24 @@ init_db()
 
 load_dotenv()
 
-soul = open("./rag/test/info/soul.md", "r").read()
+soul = open("./test/info/soul.md", "r").read()
 pprint(soul)
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.1-flash-lite",
 )
 
+# llm = ChatGroq(
+#     model="gemini-3.5-flash",
+#     temperature=0,
+# )
+
+# llm = ChatOpenAI(
+#     model="big-pickle",
+#     openai_api_key=os.getenv("OPENCODE_API_KEY"),
+#     openai_api_base="https://opencode.ai/zen/v1",
+#     temperature=0
+# )
 embedding = NVIDIAEmbeddings(model="nvidia/nemotron-3-embed-1b")
 
 pprint(llm.invoke(f"{soul}\nhelllo").content)
@@ -33,6 +46,7 @@ tools = [
     complete_task,
     update_tasks,
     web_search,
+    deep_search
 ]
 tos = {t.name: t for t in tools}
 
@@ -42,7 +56,7 @@ from langchain.messages import AnyMessage, SystemMessage, ToolMessage, HumanMess
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 from syfu.prompts.system_prompts import main_prompt
-import json
+import json, inspect
 import operator
 
 
@@ -61,8 +75,19 @@ def llm_call(state: dict):
     print()
     return {"messages": [res], "llm_calls": state.get("llm_calls", 0) + 1}
 
+async def _execute_tool(tool, args):
+    """Executes a tool using ainvoke if async, otherwise invoke."""
+    is_async = (
+        getattr(tool, "coroutine", None) is not None
+        or getattr(tool, "is_async", False)
+        or inspect.iscoroutinefunction(getattr(tool, "func", None))
+    )
+    
+    if is_async:
+        return await tool.ainvoke(args)
+    return tool.invoke(args)
 
-def tool_node(state: dict):
+async def tool_node(state: dict):
     """
     This calls the given tools.
     """
@@ -72,7 +97,8 @@ def tool_node(state: dict):
     print()
     for tool_call in state["messages"][-1].tool_calls:
         if tool_call["name"] == "create_tasks":
-            task = get_tasks_by_title.invoke(
+            task = await _execute_tool(
+                get_tasks_by_title,
                 {"title": [x["title"] for x in tool_call["args"]["tasks"]]}
             )
             if task:
@@ -82,7 +108,7 @@ def tool_node(state: dict):
                     res.append(msg)
                     continue
         call = tos[tool_call["name"]]
-        ivk = call.invoke(tool_call["args"])
+        ivk = await _execute_tool(call, tool_call["args"])
         msg = ToolMessage(content=ivk, tool_call_id=tool_call["id"])
         print(f"[tool_node][{tool_call['name']}]", msg)
         res.append(msg)
@@ -110,3 +136,17 @@ agent_builder.add_conditional_edges("llm_call", should_continue, ["tool_node", E
 agent_builder.add_edge("tool_node", "llm_call")
 
 agent = agent_builder.compile()
+
+import asyncio
+messages = [HumanMessage(content=input("Enter your research query: "))]
+
+async def main():
+    result = await agent.ainvoke({'messages': messages})
+    
+    # 2. Extract the 'messages' list from the returned state dictionary
+    for msg in result['messages']:
+        print(msg.content)
+        print("\n")
+
+if __name__ == "__main__":
+    asyncio.run(main())

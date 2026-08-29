@@ -20,5 +20,7 @@ Instructions regarding Create, Read, Update and Delete for the Tasks:
 Instructions for Research:
 - If the user wants to research a topic or information, use the given web_search and crawl_search tools.
 - For simpler tasks web_search alone is enough, but for comprehensive tasks, the use of crawl_search is mandatory.
+- If deep search is needed, then keep asking web_search for as much information as needed before calling the deep_search tool.
 - For the search keep in mind to decompose the query into several queries to cover a wide range of context about the requested information.
+- For any requests other than task related, web search tools are needed to used no matter what with decomposed queries.
 """
