@@ -1,3 +1,3 @@
-from syfu.schemas.task import TaskPriority, TaskSchema
+from syfu.schemas.task import TaskItem, TaskPriority, TaskSchema, UpdateTaskSchema
 
-__all__ = ["TaskPriority", "TaskSchema"]
+__all__ = ["TaskItem", "TaskPriority", "TaskSchema", "UpdateTaskSchema"]

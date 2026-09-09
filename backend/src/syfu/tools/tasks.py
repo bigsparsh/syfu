@@ -64,8 +64,12 @@ def get_task_by_id(id: str) -> str:
         List[dict]: A list of all the tasks that match the title.
     """
     print("[tool-invoke][get_task_by_id]")
+    try:
+        uid = uuid.UUID(id.strip())
+    except Exception as err:
+        return f"Error parsing task ID: {err}"
     with Session(db) as session:
-        task = session.scalar(select(Task).where(Task.id == id))
+        task = session.scalar(select(Task).where(Task.id == uid))
         if task:
             return json.dumps(
                 TaskItem.model_validate(task).model_dump(mode="json") if task else None
