@@ -21,6 +21,8 @@ tools = [
     update_index,
     list_brain,
     update_brain_file,
+    create_brain_folder,
+    get_uuid,
     create_brain_file,
 ]
 

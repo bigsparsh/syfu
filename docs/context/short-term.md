@@ -1,0 +1,3 @@
+- Researching and tracking Summer 2027 Agentic AI internship opportunities.
+- Identified key companies: TikTok, IBM, Scale AI, Vercel, Synopsys, NVIDIA, Google.
+- Next priority: Build Agentic AI projects (LangChain, AutoGPT, CrewAI) and monitor deadlines.

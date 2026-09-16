@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from uuid import uuid4
 from langchain_core.tools import tool
 
 BRAIN_DIR="/home/bigsparsh/Projects/syfu/docs/brain"
@@ -29,7 +30,7 @@ def list_brain(folder: str="") -> str:
     """
     Just performs a `ls` command in the brain directory to get all the folders and files inside it.
     Agrs:
-        folder (str | None): This is the path of the folder inside the brain directory that needs to be checked
+        folder (str): This is the path of the folder inside the brain directory that needs to be checked
     Output:
         str: All all elements inside the brain folder
     """
@@ -73,3 +74,12 @@ def create_brain_file(path: str, header: str):
     
     print("[tool-invoke][create-brain-file]")
     with open(f"{BRAIN_DIR}/{path}", "w") as f: f.write(header)
+
+@tool()
+def get_uuid():
+    """
+    Returns a new and unique UUIDv4.
+    Output:
+        str : A unique UUID
+    """
+    return uuid4()
