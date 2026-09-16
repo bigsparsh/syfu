@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from langchain_nvidia import NVIDIAEmbeddings
 import os
 from langchain_groq import ChatGroq
@@ -30,14 +32,18 @@ llm = ChatGoogleGenerativeAI(
 #     openai_api_base="https://opencode.ai/zen/v1",
 #     temperature=0
 # )
+
 embedding = NVIDIAEmbeddings(model="nvidia/nemotron-3-embed-1b")
 
 pprint(llm.invoke(f"{soul}\nhelllo").content)
 
+from syfu.tools.projects import *
 from syfu.tools.tasks import *
+from syfu.tools.timetable import *
 from syfu.tools.web_research import *
 
 tools = [
+    # Tasks
     create_tasks,
     get_tasks,
     get_task_by_id,
@@ -45,6 +51,27 @@ tools = [
     delete_tasks,
     complete_task,
     update_tasks,
+    # Projects
+    create_projects,
+    get_projects,
+    get_project_by_id,
+    get_projects_by_title,
+    delete_projects,
+    update_projects,
+    # Timetable
+    create_timetables,
+    get_timetables,
+    get_timetable_by_id,
+    delete_timetables,
+    update_timetables,
+    # Time Slots
+    create_time_slots,
+    get_time_slots,
+    get_time_slot_by_id,
+    get_time_slots_by_title,
+    delete_time_slots,
+    update_time_slots,
+    # Research
     web_search,
     deep_search
 ]
@@ -62,6 +89,7 @@ import operator
 
 class MessageState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
+    prompt_id: uuid
     llm_calls: int
 
 
@@ -73,6 +101,7 @@ def llm_call(state: dict):
     for m in [res]:
         print("[llm_call]", m)
     print()
+    create_tool_log("llm_call", state['messages'][-1].content, res.content, state['prompt_id'])
     return {"messages": [res], "llm_calls": state.get("llm_calls", 0) + 1}
 
 async def _execute_tool(tool, args):
@@ -96,6 +125,7 @@ async def tool_node(state: dict):
         print("[tool_node]", m)
     print()
     for tool_call in state["messages"][-1].tool_calls:
+        tool_call["args"]["prompt_id"] = state["prompt_id"]
         if tool_call["name"] == "create_tasks":
             task = await _execute_tool(
                 get_tasks_by_title,
@@ -104,6 +134,28 @@ async def tool_node(state: dict):
             if task:
                 msg = ToolMessage(content=f"{task}", tool_call_id=tool_call["id"])
                 print("[tool_node][create_task][found]", msg)
+                if msg.content != "[]":
+                    res.append(msg)
+                    continue
+        if tool_call["name"] == "create_projects":
+            project = await _execute_tool(
+                get_projects_by_title,
+                {"title": [x["title"] for x in tool_call["args"]["projects"]]}
+            )
+            if project:
+                msg = ToolMessage(content=f"{project}", tool_call_id=tool_call["id"])
+                print("[tool_node][create_project][found]", msg)
+                if msg.content != "[]":
+                    res.append(msg)
+                    continue
+        if tool_call["name"] == "create_time_slots":
+            slot = await _execute_tool(
+                get_time_slots_by_title,
+                {"title": [x["title"] for x in tool_call["args"]["timeSlots"]]}
+            )
+            if slot:
+                msg = ToolMessage(content=f"{slot}", tool_call_id=tool_call["id"])
+                print("[tool_node][create_time_slot][found]", msg)
                 if msg.content != "[]":
                     res.append(msg)
                     continue
@@ -141,7 +193,7 @@ import asyncio
 messages = [HumanMessage(content=input("Enter your research query: "))]
 
 async def main():
-    result = await agent.ainvoke({'messages': messages})
+    result = await agent.ainvoke({'messages': messages, 'prompt_id': str(uuid4())})
     
     # 2. Extract the 'messages' list from the returned state dictionary
     for msg in result['messages']:

@@ -10,28 +10,29 @@ from syfu.core.db import db
 from syfu.models.task import Task
 from syfu.schemas.task import TaskItem, TaskPriority, TaskSchema, UpdateTaskSchema
 
+from syfu.utils.file_handling import create_tool_log
+
 
 @tool()
-def get_tasks() -> str:
+def get_tasks(prompt_id: str) -> str:
     """This function is used to get all the tasks.
 
     Returns:
         List[dict]: A list of all the tasks
     """
-
     print("[tool-invoke][get_tasks]")
+
     with Session(db) as session:
         tasks = session.scalars(select(Task))
-        if tasks:
-            return json.dumps(
+        res =  json.dumps(
                 [TaskItem.model_validate(x).model_dump(mode="json") for x in tasks]
-            )
-        else:
-            return json.dumps([])
+            ) if tasks else json.dumps([])
+        create_tool_log("get_tasks", "None", res, prompt_id)
+        return res
 
 
 @tool()
-def get_tasks_by_title(title: list[str]) -> str:
+def get_tasks_by_title(title: list[str], prompt_id: str) -> str:
     """This function is used to get all the tasks matching a certain title.
     Agrs:
         title (list[str]): Titles related to the task that you want to search.
@@ -47,15 +48,15 @@ def get_tasks_by_title(title: list[str]) -> str:
         tasks = session.scalars(
             select(Task).where(or_(*[Task.title.ilike(f"%{t}%") for t in title]))
         ).all()
-        if not tasks:
-            return json.dumps([])
-        return json.dumps(
+        res =  json.dumps(
             [TaskItem.model_validate(x).model_dump(mode="json") for x in tasks]
-        )
+        ) if tasks else json.dumps([])
+        create_tool_log("get_tasks_by_title", json.dumps(title), res, prompt_id)
+        return res
 
 
 @tool()
-def get_task_by_id(id: str) -> str:
+def get_task_by_id(id: str, prompt_id: str) -> str:
     """This function is used to get a single task with the matching id.
     Agrs:
         id (str): UUID as string of the task that you want to search.
@@ -70,16 +71,16 @@ def get_task_by_id(id: str) -> str:
         return f"Error parsing task ID: {err}"
     with Session(db) as session:
         task = session.scalar(select(Task).where(Task.id == uid))
-        if task:
-            return json.dumps(
+
+        res =  json.dumps(
                 TaskItem.model_validate(task).model_dump(mode="json") if task else None
-            )
-        else:
-            return json.dumps([])
+            ) if task else json.dumps([])
+        create_tool_log("get_task_by_id", id, res, prompt_id)
+        return res
 
 
 @tool("create_tasks")
-def create_tasks(tasks: list[TaskItem]) -> str:
+def create_tasks(tasks: list[TaskItem], prompt_id: str) -> str:
     """this is the function which is used to create a new task.
 
     args:
@@ -107,13 +108,16 @@ def create_tasks(tasks: list[TaskItem]) -> str:
         session.commit()
         for task in tasks:
             session.refresh(task)
-        return json.dumps(
+        res = json.dumps(
             [TaskItem.model_validate(t).model_dump(mode="json") for t in tasks]
         )
+        create_tool_log("create_tasks", json.dumps(tasks), res, prompt_id)
+        return res
+        
 
 
 @tool("delete_tasks")
-def delete_tasks(ids: list[str]) -> str:
+def delete_tasks(ids: list[str], prompt_id: str) -> str:
     """
     this function is used to delete all the entries with the given ids.
     args:
@@ -132,11 +136,13 @@ def delete_tasks(ids: list[str]) -> str:
     with Session(db) as session:
         session.execute(delete(Task).where(Task.id.in_(uuids)))
         session.commit()
-        return f"Successfully deleted tasks with IDs {ids}"
+        res = f"Successfully deleted tasks with IDs {ids}"
+        create_tool_log("delete_tasks", json.dumps(ids), res, prompt_id)
+        return res
 
 
 @tool("complete_task")
-def complete_task(id: str, status: bool) -> str:
+def complete_task(id: str, status: bool, prompt_id: str) -> str:
     """
     this function is used to mark a task as either completed or not completed
     args:
@@ -154,11 +160,13 @@ def complete_task(id: str, status: bool) -> str:
     with Session(db) as session:
         session.execute(update(Task).where(Task.id == uid).values(completed=status))
         session.commit()
-        return f"Successfully marked task with id {id} as {'Completed' if status else 'Not Completed'}"
+        res = f"Successfully marked task with id {id} as {'Completed' if status else 'Not Completed'}"
+        create_tool_log("complete_task", json.dumps({'id': id, 'status': status}), res, prompt_id)
+        return res
 
 
 @tool("update_tasks")
-def update_tasks(tasks: list[UpdateTaskSchema]) -> str:
+def update_tasks(tasks: list[UpdateTaskSchema], prompt_id: str) -> str:
     """this is the function which is used to update tasks.
 
     args:
@@ -190,4 +198,6 @@ def update_tasks(tasks: list[UpdateTaskSchema]) -> str:
         session.bulk_update_mappings(Task, tasks)
         session.commit()
 
-    return f"Successfully updated all the entries of the IDs {[x['id'] for x in tasks]}"
+    res = f"Successfully updated all the entries of the IDs {[x['id'] for x in tasks]}"
+    create_tool_log("update_tasks", json.dumps(tasks), res, prompt_id)
+    return res
