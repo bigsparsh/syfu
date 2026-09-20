@@ -1,7 +1,7 @@
 [project]
 name = "background"
 version = "0.1.0"
-description = "Add your description here"
+description = "Cron job adjacent, runs the background"
 readme = "README.md"
 authors = [
     { name = "Sparsh Singh", email = "sparshsingh7586@gmail.com" }
@@ -11,6 +11,8 @@ dependencies = [
     "dotenv>=0.9.9",
     "langchain>=1.4.0",
     "langchain-google-genai>=4.4.0",
+    "langchain-openai>=1.6.2",
+    "platformdirs>=4.11.10",
 ]
 
 [project.scripts]
@@ -19,3 +21,8 @@ background = "background:main"
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.1",
+]

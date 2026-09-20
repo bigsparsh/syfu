@@ -1,6 +1,12 @@
 from langchain_core.tools import tool
+from platformdirs import user_cache_path
 
-CONTEXT_DIR="/home/bigsparsh/Projects/syfu/docs/context"
+from src.background.utils.cache import ensure_cache_structure
+
+ensure_cache_structure()
+cache_path = user_cache_path("syfu")
+
+CONTEXT_DIR= cache_path / "context"
 
 @tool()
 def update_long_term_context(data: str):
@@ -11,7 +17,7 @@ def update_long_term_context(data: str):
         data (str): New modified data that is to be overwritten on long-term.md
     """
     print("[tool-invoke][update-long-term-context]")
-    with open(f"{CONTEXT_DIR}/long-term.md", "w") as f:
+    with open(CONTEXT_DIR / "long-term-context.md", "w") as f:
         f.write(data)
 
 @tool()
@@ -24,7 +30,7 @@ def update_short_term_context(data: str):
     """
 
     print("[tool-invoke][update-short-term-context]")
-    with open(f"{CONTEXT_DIR}/short-term.md", "w") as f:
+    with open(CONTEXT_DIR / "short-term-context.md", "w") as f:
         f.write(data)
 
 @tool()
@@ -36,7 +42,7 @@ def get_short_term_context():
     """
 
     print("[tool-invoke][get-short-term-context]")
-    with open(f"{CONTEXT_DIR}/short-term.md", "r") as f:
+    with open(CONTEXT_DIR / "short-term-context.md", "r") as f:
         return f.read()
 
 
@@ -50,5 +56,5 @@ def get_long_term_context():
     """
 
     print("[tool-invoke][get-long-term-context]")
-    with open(f"{CONTEXT_DIR}/long-term.md", "r") as f:
+    with open(CONTEXT_DIR / "long-term-context.md", "r") as f:
         return f.read()

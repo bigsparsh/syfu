@@ -2,8 +2,15 @@ import subprocess
 from pathlib import Path
 from uuid import uuid4
 from langchain_core.tools import tool
+from platformdirs import user_cache_path
+from pydantic import Field
 
-BRAIN_DIR="/home/bigsparsh/Projects/syfu/docs/brain"
+from src.background.utils.cache import ensure_cache_structure
+
+ensure_cache_structure()
+cache_path = user_cache_path("syfu")
+
+BRAIN_DIR= cache_path / "brain"
 
 @tool()
 def get_index() -> str:
@@ -11,7 +18,7 @@ def get_index() -> str:
     Gets the brain index where each index is an markdown file name which is present in different folders inside the brain dir.
     """
     print("[tool-invoke][get-index]")
-    with open(f"{BRAIN_DIR}/index.md", "r") as f:
+    with open(BRAIN_DIR/"index.md", "r") as f:
         return f.read()
 
 @tool()
@@ -22,7 +29,7 @@ def update_index(data: str) -> str:
     """
 
     print("[tool-invoke][update-index]")
-    with open(f"{BRAIN_DIR}/index.md", "w") as f:
+    with open(BRAIN_DIR/"index.md", "w") as f:
         f.write(data)
 
 @tool()
@@ -35,7 +42,7 @@ def list_brain(folder: str="") -> str:
         str: All all elements inside the brain folder
     """
     print("[tool-invoke][list-brain]")
-    return subprocess.run(['ls', '-la'], cwd=f"{BRAIN_DIR}/{folder}", capture_output=True, text=True)
+    return subprocess.run(['ls', '-la'], cwd=BRAIN_DIR/folder, capture_output=True, text=True)
 
 @tool()
 def update_brain_file(file_path: str, data: str):
@@ -48,7 +55,7 @@ def update_brain_file(file_path: str, data: str):
     """
 
     print("[tool-invoke][update-brain-file]")
-    with open(f"{BRAIN_DIR}/{file_path}", "w") as f:
+    with open(BRAIN_DIR/file_path, "w") as f:
         f.write(data)
 
 
@@ -60,20 +67,21 @@ def create_brain_folder(path: str):
         path (str): Name of the new folder to be created.
     """
     print("[tool-invoke][create-brain-folder]")
-    folder = Path(f"{BRAIN_DIR}/{path}")
+    folder = Path(BRAIN_DIR/path)
     folder.mkdir(parents=True, exist_ok=True)
 
 @tool()
-def create_brain_file(path: str, header: str):
+def create_brain_file(path: str = Field( description="The exact filename only, e.g., 'tasks.md'. Do NOT include any folder names or directory paths."), header: str="---\n---"):
     """
     Create a new markdown file in the brain folder or any top level folder inside the brain folder.
+    NOTE: The base path is already in the brain folder. So, if a file needs to be present in the base brain folder then DO NOT add the folder name.
     Agrs:
         path (str): Path of the folder and the name of the file to create inside the brain folder.
         header (str): Header of the markdown file that describes the information that is to be stored in here.
     """
     
     print("[tool-invoke][create-brain-file]")
-    with open(f"{BRAIN_DIR}/{path}", "w") as f: f.write(header)
+    with open(BRAIN_DIR/path, "w") as f: f.write(header)
 
 @tool()
 def get_uuid():

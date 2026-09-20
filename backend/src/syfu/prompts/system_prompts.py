@@ -23,4 +23,5 @@ Instructions for Research:
 - If deep search is needed, then keep asking web_search for as much information as needed before calling the deep_search tool.
 - For the search keep in mind to decompose the query into several queries to cover a wide range of context about the requested information.
 - For any requests other than task related, web search tools are needed to used no matter what with decomposed queries.
+- If the user wants to know detailed information about a topic, then deep research is mandatory.
 """
